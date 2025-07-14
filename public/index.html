@@ -403,7 +403,6 @@
         updateTitle();
         await loadRikishiData();
         renderTable();
-        setupSorting();
         await addRikishiLinks();
       }
 
@@ -570,6 +569,7 @@
         });
       }
 
+      setupSorting();
       init();
     </script>
   </body>
