@@ -6,6 +6,9 @@
     <title>Sumo Fantasy League</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.10.0/dist/full.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/diff@8.0.2/dist/diff.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/diff2html@3.4.52/bundles/js/diff2html.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.52/bundles/css/diff2html.min.css" />
     <style>
       .table th {
         cursor: pointer;
@@ -112,7 +115,6 @@
             </svg>
             <div class="text-sm">
               <p><strong>basho:</strong> Format YYYYMM (e.g., "202507" for July 2025)</p>
-              <p><strong>bashoName:</strong> Display name for the tournament</p>
               <p><strong>players:</strong> Object with player names as keys and arrays of 3 rikishi names as values</p>
             </div>
           </div>
@@ -125,10 +127,42 @@
       </div>
     </div>
 
+    <!-- Conflict Resolution Modal -->
+    <div id="conflictModal" class="modal">
+      <div class="modal-box w-11/12 max-w-4xl">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-bold text-lg text-warning">⚠️ Configuration Conflict Detected</h3>
+        </div>
+
+        <div class="space-y-4">
+          <div class="alert alert-warning">
+            <svg class="w-6 h-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L3.316 16.5c-.77.833.192 2.5 1.732 2.5z"
+              ></path>
+            </svg>
+            <div>
+              <p><strong>The default configuration has been updated.</strong></p>
+              <p>You have custom changes that differ from the new default. Please choose which version to use:</p>
+            </div>
+          </div>
+
+          <div id="diffDisplay"><!-- Diff content will be populated here --></div>
+        </div>
+
+        <div class="modal-action">
+          <button class="btn btn-outline" onclick="keepCurrentConfig()">Keep Current Configuration</button>
+          <button class="btn btn-primary" onclick="useDefaultConfig()">Use New Default Configuration</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       const DEFAULT_CONFIG = {
         basho: '202507',
-        bashoName: 'July 2025',
         players: {
           Harold: ['Wakatakakage', 'Meisei', 'Fujinokawa'],
           Evan: ['Kotoeiho', 'Oho', 'Onokatsu'],
@@ -142,22 +176,143 @@
       let CONFIG = {};
       let rikishiData = [];
       let sortState = { column: null, ascending: true };
+      let usingCustomConfig = false;
+
+      // Storage keys
+      const STORAGE_KEYS = {
+        CONFIG: 'sumoFantasyConfig',
+        OVERRIDE_PREFERENCE: 'sumoFantasyOverridePreference',
+        DEFAULT_HASH: 'sumoFantasyDefaultHash'
+      };
+
+      function hashConfig(config) {
+        return btoa(JSON.stringify(config));
+      }
+
+      function deepEqual(obj1, obj2) {
+        return JSON.stringify(obj1) === JSON.stringify(obj2);
+      }
 
       function loadConfig() {
-        const saved = localStorage.getItem('sumoFantasyConfig');
-        if (saved) {
-          try {
-            CONFIG = JSON.parse(saved);
-            return;
-          } catch (error) {
-            console.error('Failed to parse saved config:', error);
-          }
+        const savedConfig = localStorage.getItem(STORAGE_KEYS.CONFIG);
+        const savedOverridePreference = localStorage.getItem(STORAGE_KEYS.OVERRIDE_PREFERENCE);
+        const savedDefaultHash = localStorage.getItem(STORAGE_KEYS.DEFAULT_HASH);
+        const currentDefaultHash = hashConfig(DEFAULT_CONFIG);
+
+        // If no saved config, use default
+        if (!savedConfig) {
+          CONFIG = { ...DEFAULT_CONFIG };
+          usingCustomConfig = false;
+          return { showConflict: false };
         }
-        CONFIG = { ...DEFAULT_CONFIG };
+
+        let parsedSavedConfig;
+        try {
+          parsedSavedConfig = JSON.parse(savedConfig);
+        } catch (error) {
+          console.error('Failed to parse saved config:', error);
+          CONFIG = { ...DEFAULT_CONFIG };
+          usingCustomConfig = false;
+          return { showConflict: false };
+        }
+
+        // If saved config is the same as default, use default (don't save to localStorage)
+        if (deepEqual(parsedSavedConfig, DEFAULT_CONFIG)) {
+          CONFIG = { ...DEFAULT_CONFIG };
+          usingCustomConfig = false;
+          // Clean up localStorage since we're using default
+          localStorage.removeItem(STORAGE_KEYS.CONFIG);
+          localStorage.removeItem(STORAGE_KEYS.OVERRIDE_PREFERENCE);
+          localStorage.removeItem(STORAGE_KEYS.DEFAULT_HASH);
+          return { showConflict: false };
+        }
+
+        // Check if we've already confirmed we want to override for this default
+        if (savedOverridePreference === 'keep' && savedDefaultHash === currentDefaultHash) {
+          CONFIG = parsedSavedConfig;
+          usingCustomConfig = true;
+          return { showConflict: false };
+        }
+
+        // Check if default has changed since last time or first time with custom config
+        if (!savedDefaultHash || savedDefaultHash !== currentDefaultHash) {
+          // Default has changed, show conflict
+          return {
+            showConflict: true,
+            currentConfig: parsedSavedConfig,
+            defaultConfig: DEFAULT_CONFIG
+          };
+        }
+
+        // Use saved config
+        CONFIG = parsedSavedConfig;
+        usingCustomConfig = true;
+        return { showConflict: false };
       }
 
       function saveConfigToStorage() {
-        localStorage.setItem('sumoFantasyConfig', JSON.stringify(CONFIG));
+        if (usingCustomConfig) {
+          localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(CONFIG));
+        }
+      }
+
+      function showConflictModal(currentConfig, defaultConfig) {
+        const currentJson = JSON.stringify(currentConfig, null, 2);
+        const defaultJson = JSON.stringify(defaultConfig, null, 2);
+
+        // Generate unified diff using the diff library
+        const diff = Diff.createPatch(
+          '',
+          currentJson,
+          defaultJson,
+          'Current Configuration',
+          'New Default Configuration',
+          { context: Number.MAX_SAFE_INTEGER }
+        );
+
+        // Convert to HTML using diff2html
+        const diffHtml = Diff2Html.html(diff, {
+          drawFileList: false,
+          matching: 'lines',
+          outputFormat: 'side-by-side',
+          renderNothingWhenEmpty: false,
+          colorScheme: 'dark'
+        });
+
+        document.getElementById('diffDisplay').innerHTML = diffHtml;
+        document.getElementById('conflictModal').classList.add('modal-open');
+      }
+
+      function closeConflictModal() {
+        document.getElementById('conflictModal').classList.remove('modal-open');
+      }
+
+      function keepCurrentConfig() {
+        const loadResult = loadConfig();
+        const currentConfig = loadResult.showConflict ? loadResult.currentConfig : CONFIG;
+        CONFIG = currentConfig;
+        usingCustomConfig = true;
+
+        // Save preference and current default hash
+        localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(CONFIG));
+        localStorage.setItem(STORAGE_KEYS.OVERRIDE_PREFERENCE, 'keep');
+        localStorage.setItem(STORAGE_KEYS.DEFAULT_HASH, hashConfig(DEFAULT_CONFIG));
+
+        closeConflictModal();
+        continueInit();
+      }
+
+      function useDefaultConfig() {
+        CONFIG = { ...DEFAULT_CONFIG };
+        usingCustomConfig = false;
+
+        // Clear all localStorage entries since we're using default
+        localStorage.removeItem(STORAGE_KEYS.CONFIG);
+        localStorage.removeItem(STORAGE_KEYS.OVERRIDE_PREFERENCE);
+        localStorage.removeItem(STORAGE_KEYS.DEFAULT_HASH);
+
+        closeConflictModal();
+        continueInit();
       }
 
       function openConfigModal() {
@@ -188,9 +343,6 @@
         if (!config.basho || typeof config.basho !== 'string') {
           throw new Error('basho must be a string (format: YYYYMM)');
         }
-        if (!config.bashoName || typeof config.bashoName !== 'string') {
-          throw new Error('bashoName must be a string');
-        }
         if (!config.players || typeof config.players !== 'object') {
           throw new Error('players must be an object');
         }
@@ -214,17 +366,40 @@
           validateConfig(newConfig);
 
           CONFIG = newConfig;
-          saveConfigToStorage();
-          closeConfigModal();
 
-          await init();
+          // Determine if this is custom or default
+          if (deepEqual(CONFIG, DEFAULT_CONFIG)) {
+            usingCustomConfig = false;
+            // Clean up localStorage since we're using default
+            localStorage.removeItem(STORAGE_KEYS.CONFIG);
+            localStorage.removeItem(STORAGE_KEYS.OVERRIDE_PREFERENCE);
+            localStorage.removeItem(STORAGE_KEYS.DEFAULT_HASH);
+          } else {
+            usingCustomConfig = true;
+            localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(CONFIG));
+            localStorage.setItem(STORAGE_KEYS.OVERRIDE_PREFERENCE, 'keep');
+            localStorage.setItem(STORAGE_KEYS.DEFAULT_HASH, hashConfig(DEFAULT_CONFIG));
+          }
+
+          closeConfigModal();
+          await continueInit();
         } catch (error) {
           showConfigError(error.message);
         }
       }
 
       async function init() {
-        loadConfig();
+        const loadResult = loadConfig();
+
+        if (loadResult.showConflict) {
+          showConflictModal(loadResult.currentConfig, loadResult.defaultConfig);
+          return; // Don't continue init until conflict is resolved
+        }
+
+        await continueInit();
+      }
+
+      async function continueInit() {
         updateTitle();
         await loadRikishiData();
         renderTable();
@@ -233,7 +408,9 @@
       }
 
       function updateTitle() {
-        document.getElementById('title').textContent = `Sumo Fantasy League - ${CONFIG.bashoName}`;
+        const dateString = `${CONFIG.basho.substring(0, 4)}-${CONFIG.basho.substring(4, 6)}-05`;
+        const bashoName = new Date(dateString).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+        document.getElementById('title').textContent = `Sumo Fantasy League - ${bashoName}`;
         document.getElementById('resultsLink').href = `https://sumostats.com/basho/${CONFIG.basho}`;
         document.getElementById('banzukeLink').href = `https://sumostats.com/banzuke/${CONFIG.basho}`;
       }
