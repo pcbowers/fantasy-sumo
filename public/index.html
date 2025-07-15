@@ -460,16 +460,21 @@
 
             dot.className = `w-2 h-2 rounded-full bg-${colorClass} cursor-pointer`;
             dot.setAttribute('tabindex', '0');
-            container.appendChild(dot);
 
-            const tooltipContent = `
+            const dotTemplate = document.createElement('div');
+            dotTemplate.style.display = 'none';
+            dotTemplate.innerHTML = `
               <div class="text-sm">
-                <div class="text-${colorClass}"><strong>${match.opponentShikonaEn}</strong></div>
+                <div class="rikishi-name" data-name="${match.opponentShikonaEn}">${match.opponentShikonaEn}</div>
                 <div class="text-xs">Kimarite: ${match.kimarite || 'N/A'}</div>
+                <div class="text-xs text-${colorClass}">Result: ${match.result}</div>
               </div>
             `;
 
-            return tippy(dot, { content: tooltipContent });
+            dot.appendChild(dotTemplate);
+            container.appendChild(dot);
+
+            return tippy(dot, { onTrigger: instance => instance.setContent(dotTemplate.innerHTML) });
           });
 
         tippy.createSingleton(tippyInstances, {
@@ -477,7 +482,8 @@
           moveTransition: 'transform 0.2s ease-out',
           placement: 'bottom',
           interactive: true,
-          allowHTML: true
+          allowHTML: true,
+          overrides: ['onTrigger']
         });
 
         return container;
