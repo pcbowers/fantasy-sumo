@@ -9,6 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/diff@8.0.2/dist/diff.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/diff2html@3.4.52/bundles/js/diff2html.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.52/bundles/css/diff2html.min.css" />
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
     <style>
       .table th {
         cursor: pointer;
@@ -438,6 +440,49 @@
         }
       }
 
+      function createMatchDots(rikishi) {
+        const container = document.createElement('div');
+        container.className = 'flex flex-wrap gap-1 mt-1';
+
+        const tippyInstances = rikishi.record
+          .filter(match => match.result !== '')
+          .map(match => {
+            const dot = document.createElement('div');
+
+            const colorClass =
+              match.result === 'win'
+                ? 'emerald-500'
+                : match.result === 'loss'
+                ? 'red-500'
+                : match.result === 'absent'
+                ? 'gray-500'
+                : 'amber-500';
+
+            dot.className = `w-2 h-2 rounded-full bg-${colorClass} cursor-pointer`;
+            dot.setAttribute('tabindex', '0');
+            container.appendChild(dot);
+
+            const tooltipContent = `
+              <div class="text-sm">
+                <div class="text-${colorClass}"><strong>${match.opponentShikonaEn}</strong></div>
+                <div class="text-xs">Kimarite: ${match.kimarite || 'N/A'}</div>
+              </div>
+            `;
+
+            return tippy(dot, { content: tooltipContent });
+          });
+
+        tippy.createSingleton(tippyInstances, {
+          delay: [100, 250],
+          moveTransition: 'transform 0.2s ease-out',
+          placement: 'bottom',
+          interactive: true,
+          allowHTML: true
+        });
+
+        return container;
+      }
+
       function createPlayerRow(playerName, picks) {
         const row = document.createElement('tr');
 
@@ -479,6 +524,10 @@
           <div class="text-xs text-gray-400 text-nowrap">${rikishi.rank}</div>
           <div class="text-xs text-gray-400 font-bold">${rikishi.wins}-${rikishi.losses}-${rikishi.absences}</div>
         `;
+
+        if (rikishi.record && rikishi.record.length > 0) {
+          cell.appendChild(createMatchDots(rikishi));
+        }
 
         return cell;
       }
