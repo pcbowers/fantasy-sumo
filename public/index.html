@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.52/bundles/css/diff2html.min.css" />
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
+    <script src="/kimarite/data.js"></script>
     <style>
       .table th {
         cursor: pointer;
@@ -35,6 +36,9 @@
         font-family: 'Courier New', monospace;
         font-size: 0.875rem;
         line-height: 1.4;
+      }
+      .tippy-box[data-theme~='ghost'] {
+        background-color: transparent;
       }
     </style>
   </head>
@@ -458,23 +462,18 @@
                 ? 'gray-500'
                 : 'amber-500';
 
-            dot.className = `w-2 h-2 rounded-full bg-${colorClass} cursor-pointer`;
+            dot.className = `dot w-2 h-2 rounded-full bg-${colorClass} cursor-pointer`;
             dot.setAttribute('tabindex', '0');
-
-            const dotTemplate = document.createElement('div');
-            dotTemplate.style.display = 'none';
-            dotTemplate.innerHTML = `
-              <div class="text-sm">
-                <div class="rikishi-name" data-name="${match.opponentShikonaEn}">${match.opponentShikonaEn}</div>
-                <div class="text-xs">Kimarite: ${match.kimarite || 'N/A'}</div>
-                <div class="text-xs text-${colorClass}">Result: ${match.result}</div>
-              </div>
-            `;
-
-            dot.appendChild(dotTemplate);
             container.appendChild(dot);
 
-            return tippy(dot, { onTrigger: instance => instance.setContent(dotTemplate.innerHTML) });
+            const dotTemplate = document.createElement('div');
+            dotTemplate.innerHTML = `
+              <div class="rikishi-name text-sm" data-name="${match.opponentShikonaEn}">${match.opponentShikonaEn}</div>
+              <div class="text-xs text-${colorClass}">Result: ${match.result}</div>
+            `;
+
+            dotTemplate.appendChild(createKimarite(match.kimarite));
+            return tippy(dot, { content: dotTemplate });
           });
 
         tippy.createSingleton(tippyInstances, {
@@ -483,7 +482,39 @@
           placement: 'bottom',
           interactive: true,
           allowHTML: true,
-          overrides: ['onTrigger']
+          overrides: ['onTrigger'],
+          appendTo: () => document.body
+        });
+
+        return container;
+      }
+
+      function createKimarite(kimarite) {
+        const container = document.createElement('div');
+        container.className = 'text-xs';
+        container.innerHTML = `Kimarite: ${kimarite || 'N/A'}`;
+
+        if (!kimarite) return container;
+
+        const kimariteDetails = `
+          <div class="card card-md image-full w-60 bg-base-100">
+            <figure>
+              <img src="/kimarite/${kimariteData.find(k => k.name === kimarite).name}.png" alt="${kimarite}" />
+            </figure>
+            <div class="card-body">
+              <h2 class="text-white card-title capitalize">${kimarite}</h2>
+              <p class="text-white">${kimariteData.find(k => k.name === kimarite).description}</p>
+            </div>
+          </div>
+        `;
+
+        tippy(container, {
+          content: kimariteDetails,
+          allowHTML: true,
+          delay: [100, 250],
+          theme: 'ghost',
+          arrow: false,
+          interactive: true
         });
 
         return container;
@@ -539,7 +570,14 @@
       }
 
       async function addRikishiLinks() {
-        const elements = Array.from(document.querySelectorAll('.rikishi-name'));
+        const dotNames = Array.from(document.querySelectorAll('.dot'))
+          .map(dot => dot._tippy?.props?.content)
+          .filter(content => content instanceof HTMLDivElement)
+          .map(content => content.querySelector('.rikishi-name'))
+          .filter(Boolean);
+        const pickNames = Array.from(document.querySelectorAll('.rikishi-name'));
+        const elements = [...dotNames, ...pickNames];
+
         const cache = JSON.parse(localStorage.getItem('rikishiProfiles') || '{}');
 
         const rikishiItems = elements
