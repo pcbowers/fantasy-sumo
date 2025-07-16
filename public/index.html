@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="en" class="dark" data-theme="dark">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sumo Fantasy League</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.10.0/dist/full.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/theme-change@2.0.2/index.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/diff@8.0.2/dist/diff.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/diff2html@3.4.52/bundles/js/diff2html.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html@3.4.52/bundles/css/diff2html.min.css" />
@@ -37,18 +39,61 @@
         font-size: 0.875rem;
         line-height: 1.4;
       }
+      .tippy-box[data-theme~='custom'] {
+        background-color: var(--color-neutral);
+      }
+      .tippy-box[data-theme~='custom'][data-placement^='top'] > .tippy-arrow::before {
+        border-top-color: var(--color-neutral);
+      }
+      .tippy-box[data-theme~='custom'][data-placement^='bottom'] > .tippy-arrow::before {
+        border-bottom-color: var(--color-neutral);
+      }
+      .tippy-box[data-theme~='custom'][data-placement^='left'] > .tippy-arrow::before {
+        border-left-color: var(--color-neutral);
+      }
+      .tippy-box[data-theme~='custom'][data-placement^='right'] > .tippy-arrow::before {
+        border-right-color: var(--color-neutral);
+      }
       .tippy-box[data-theme~='ghost'] {
         background-color: transparent;
       }
     </style>
   </head>
   <body class="min-h-screen">
+    <div class="absolute top-2 right-2">
+      <button class="btn btn-ghost btn-circle" popovertarget="theme-menu" style="anchor-name: --anchor-1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+          <g fill="none">
+            <path fill="currentColor" d="M2.75 12A9.25 9.25 0 0 0 12 21.25V2.75A9.25 9.25 0 0 0 2.75 12" />
+            <path
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M12 21.25a9.25 9.25 0 0 0 0-18.5m0 18.5a9.25 9.25 0 0 1 0-18.5m0 18.5V2.75"
+            />
+          </g>
+        </svg>
+      </button>
+      <ul
+        class="dropdown dropdown-end menu w-52 rounded-box bg-base-100 shadow-sm max-h-42 overflow-y-auto"
+        popover
+        id="theme-menu"
+        style="position-anchor: --anchor-1"
+      ></ul>
+    </div>
+
     <div class="max-w-5xl mx-auto p-6 space-y-2">
-      <h1 class="text-4xl font-bold text-center" id="title">Sumo Fantasy League</h1>
+      <div class="mb-4">
+        <h2 class="text-lg text-center">Sumo Fantasy League</h2>
+        <h1 class="text-4xl font-bold text-center" id="title">Sumo Fantasy League</h1>
+      </div>
 
       <div class="flex gap-4 items-center">
-        <a href="#" id="resultsLink" target="_blank" class="btn shadow-md">Results</a>
-        <a href="#" id="banzukeLink" target="_blank" class="btn shadow-md">Banzuke</a>
+        <a href="#" id="resultsLink" target="_blank" class="btn md:btn-wide btn-soft btn-primary shadow-md">Results</a>
+        <a href="#" id="banzukeLink" target="_blank" class="btn md:btn-wide btn-soft btn-secondary shadow-md">
+          Banzuke
+        </a>
         <div class="flex-grow flex justify-end">
           <button class="btn btn-sm btn-ghost btn-circle" onclick="openConfigModal()">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
@@ -78,17 +123,18 @@
     </div>
 
     <!-- Configuration Modal -->
-    <div id="configModal" class="modal">
-      <div class="modal-box w-11/12 max-w-3xl">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="font-bold text-lg">Configuration</h3>
-          <button class="btn btn-sm btn-circle btn-ghost" onclick="closeConfigModal()">✕</button>
-        </div>
+    <dialog id="configModal" class="modal py-4">
+      <div class="modal-box w-11/12 max-w-3xl max-h-full">
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+        </form>
+
+        <h3 class="font-bold text-lg mb-4">Configuration</h3>
 
         <div class="space-y-4">
           <div>
-            <label class="label" for="configTextarea">
-              <span class="label-text">Edit the configuration below (JSON format):</span>
+            <label class="text-base-content/70" for="configTextarea">
+              Edit the configuration below (JSON format):
             </label>
             <textarea
               id="configTextarea"
@@ -131,14 +177,12 @@
           <button class="btn btn-primary" onclick="saveConfig()">Save Configuration</button>
         </div>
       </div>
-    </div>
+    </dialog>
 
     <!-- Conflict Resolution Modal -->
-    <div id="conflictModal" class="modal">
-      <div class="modal-box w-11/12 max-w-4xl">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="font-bold text-lg text-warning">⚠️ Configuration Conflict Detected</h3>
-        </div>
+    <dialog id="conflictModal" class="modal py-4">
+      <div class="modal-box w-11/12 max-w-4xl max-h-full">
+        <h3 class="font-bold text-lg text-warning mb-4">⚠️ Configuration Conflict Detected</h3>
 
         <div class="space-y-4">
           <div class="alert alert-warning">
@@ -160,11 +204,11 @@
         </div>
 
         <div class="modal-action">
-          <button class="btn btn-outline" onclick="keepCurrentConfig()">Keep Current Configuration</button>
-          <button class="btn btn-primary" onclick="useDefaultConfig()">Use New Default Configuration</button>
+          <button class="btn btn-outline" onclick="keepCurrentConfig()">Keep Current Config</button>
+          <button class="btn btn-primary" onclick="useDefaultConfig()">Use Default Config</button>
         </div>
       </div>
-    </div>
+    </dialog>
 
     <script>
       const DEFAULT_CONFIG = {
@@ -287,11 +331,11 @@
         });
 
         document.getElementById('diffDisplay').innerHTML = diffHtml;
-        document.getElementById('conflictModal').classList.add('modal-open');
+        document.getElementById('conflictModal').showModal();
       }
 
       function closeConflictModal() {
-        document.getElementById('conflictModal').classList.remove('modal-open');
+        document.getElementById('conflictModal').close();
       }
 
       function keepCurrentConfig() {
@@ -324,12 +368,12 @@
 
       function openConfigModal() {
         document.getElementById('configTextarea').value = JSON.stringify(CONFIG, null, 2);
-        document.getElementById('configModal').classList.add('modal-open');
+        document.getElementById('configModal').showModal();
         hideConfigError();
       }
 
       function closeConfigModal() {
-        document.getElementById('configModal').classList.remove('modal-open');
+        document.getElementById('configModal').close();
       }
 
       function showConfigError(message) {
@@ -347,11 +391,17 @@
       }
 
       function validateConfig(config) {
-        if (!config.basho || typeof config.basho !== 'string') {
+        if (!config.basho || typeof config.basho !== 'string' || !config.basho.match(/^\d{6}$/)) {
           throw new Error('basho must be a string (format: YYYYMM)');
         }
-        if (!config.division || typeof config.division !== 'string') {
-          throw new Error('division must be a string');
+        if (
+          !config.division ||
+          typeof config.division !== 'string' ||
+          !config.division.match(/^(Makuuchi|Juryo|Makushita|Sandanme|Jonidan|Jonokuchi)$/)
+        ) {
+          throw new Error(
+            'division must be a string (one of Makuuchi, Juryo, Makushita, Sandanme, Jonidan, or Jonokuchi)'
+          );
         }
         if (!config.players || typeof config.players !== 'object') {
           throw new Error('players must be an object');
@@ -419,7 +469,7 @@
       function updateTitle() {
         const dateString = `${CONFIG.basho.substring(0, 4)}-${CONFIG.basho.substring(4, 6)}-05`;
         const bashoName = new Date(dateString).toLocaleString('en-US', { month: 'long', year: 'numeric' });
-        document.getElementById('title').textContent = `Sumo Fantasy ${CONFIG.division} League - ${bashoName}`;
+        document.getElementById('title').textContent = `${CONFIG.division} ${bashoName}`;
         document.getElementById('resultsLink').href = `https://sumostats.com/basho/${CONFIG.basho}`;
         document.getElementById('banzukeLink').href = `https://sumostats.com/banzuke/${CONFIG.basho}`;
       }
@@ -459,12 +509,12 @@
 
             const colorClass =
               match.result === 'win'
-                ? 'emerald-500'
+                ? 'success'
                 : match.result === 'loss'
-                ? 'red-500'
+                ? 'error'
                 : match.result === 'absent'
-                ? 'gray-500'
-                : 'amber-500';
+                ? 'base/70'
+                : 'warning';
 
             dot.className = `dot w-2 h-2 rounded-full bg-${colorClass} cursor-pointer`;
             dot.setAttribute('tabindex', '0');
@@ -477,7 +527,7 @@
               dotTemplate.appendChild(createMatchOverview(match, colorClass));
             }
 
-            return tippy(dot, { content: dotTemplate });
+            return tippy(dot, { content: dotTemplate, theme: 'custom' });
           });
 
         tippy.createSingleton(tippyInstances, {
@@ -486,7 +536,7 @@
           placement: 'bottom',
           interactive: true,
           allowHTML: true,
-          overrides: ['onTrigger'],
+          overrides: ['onTrigger', 'theme'],
           appendTo: () => document.body
         });
 
@@ -534,7 +584,7 @@
         }
 
         const statsOverview = overview.appendChild(document.createElement('div'));
-        statsOverview.className = 'text-xs text-gray-400';
+        statsOverview.className = 'text-xs text-neutral-content/70';
 
         const opponent = rikishiData.find(r => r.rikishiID === match.opponentID);
         if (opponent) {
@@ -578,14 +628,14 @@
 
         if (!rikishi) {
           cell.textContent = '-';
-          cell.className = 'text-gray-500';
+          cell.className = 'text-base-content/70';
           return cell;
         }
 
         cell.innerHTML = `
           <div class="rikishi" data-id="${rikishi.rikishiID}">${pickName}</div>
-          <div class="text-xs text-gray-400 text-nowrap">${rikishi.rank}</div>
-          <div class="text-xs text-gray-400 font-bold">${rikishi.wins}-${rikishi.losses}-${rikishi.absences}</div>
+          <div class="text-xs text-base-content/70 text-nowrap">${rikishi.rank}</div>
+          <div class="text-xs text-base-content/70 font-bold">${rikishi.wins}-${rikishi.losses}-${rikishi.absences}</div>
         `;
 
         if (rikishi.record && rikishi.record.length > 0) {
@@ -624,7 +674,7 @@
           const link = Object.assign(document.createElement('a'), {
             href: `https://www.sumo.or.jp/EnSumoDataRikishi/profile/${resolvedProfile.nskId}`,
             target: '_blank',
-            className: 'text-blue-500 hover:underline',
+            className: `text-info hover:underline`,
             textContent: element.textContent
           });
           element.innerHTML = '';
@@ -686,6 +736,60 @@
         });
       }
 
+      function loadThemes() {
+        const themes = [
+          'dark',
+          'light',
+          'cupcake',
+          'bumblebee',
+          'emerald',
+          'corporate',
+          'synthwave',
+          'retro',
+          'cyberpunk',
+          'valentine',
+          'halloween',
+          'garden',
+          'forest',
+          'aqua',
+          'lofi',
+          'pastel',
+          'fantasy',
+          'wireframe',
+          'black',
+          'luxury',
+          'dracula',
+          'cmyk',
+          'autumn',
+          'business',
+          'acid',
+          'lemonade',
+          'night',
+          'coffee',
+          'winter',
+          'dim',
+          'nord',
+          'sunset',
+          'caramellatte',
+          'abyss',
+          'silk'
+        ];
+
+        const themeMenu = document.getElementById('theme-menu');
+        themeMenu.innerHTML = '';
+
+        themes.forEach(theme => {
+          const li = themeMenu.appendChild(document.createElement('li'));
+          const button = li.appendChild(document.createElement('button'));
+          button.dataset.setTheme = theme;
+          button.dataset.actClass = 'menu-active';
+          button.textContent = theme;
+        });
+      }
+
+      document.getElementById('conflictModal').addEventListener('cancel', event => event.preventDefault());
+
+      loadThemes();
       setupSorting();
       init();
     </script>
