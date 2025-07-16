@@ -451,6 +451,7 @@
         const tippyInstances = rikishi.record
           .filter(match => match.result !== '')
           .map(match => {
+            const opponentName = match.opponentShikonaEn;
             const dot = document.createElement('div');
 
             const colorClass =
@@ -467,12 +468,20 @@
             container.appendChild(dot);
 
             const dotTemplate = document.createElement('div');
-            dotTemplate.innerHTML = `
-              <div class="rikishi-name text-sm" data-name="${match.opponentShikonaEn}">${match.opponentShikonaEn}</div>
-              <div class="text-xs text-${colorClass}">Result: ${match.result}</div>
-            `;
+            dotTemplate.innerHTML = `<div class="rikishi-name text-sm" data-name="${opponentName}">${opponentName}</div>`;
 
-            dotTemplate.appendChild(createKimarite(match.kimarite));
+            const opponent = rikishiData.find(r => r.shikonaEn === opponentName);
+            if (opponent) {
+              dotTemplate.innerHTML += `
+                <div class="text-xs text-gray-400 text-nowrap">${opponent.rank}</div>
+                <div class="text-xs text-gray-400 font-bold">${opponent.wins}-${opponent.losses}-${opponent.absences}</div>
+              `;
+            }
+
+            const kimarite = createKimarite(match.result, match.kimarite);
+            kimarite.classList.add(`text-${colorClass}`);
+            dotTemplate.appendChild(kimarite);
+
             return tippy(dot, { content: dotTemplate });
           });
 
@@ -489,10 +498,15 @@
         return container;
       }
 
-      function createKimarite(kimarite) {
+      function createKimarite(result, kimarite) {
         const container = document.createElement('div');
         container.className = 'text-xs';
-        container.innerHTML = `Kimarite: ${kimarite || 'N/A'}`;
+        container.innerHTML =
+          result === 'win'
+            ? `Won with <span class="font-semibold">${kimarite}</span>`
+            : result === 'loss'
+            ? `Lost to <span class="font-semibold">${kimarite}</span>`
+            : '';
 
         if (!kimarite) return container;
 
