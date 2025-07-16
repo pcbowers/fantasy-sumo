@@ -120,6 +120,7 @@
             </svg>
             <div class="text-sm">
               <p><strong>basho:</strong> Format YYYYMM (e.g., "202507" for July 2025)</p>
+              <p><strong>division:</strong> One of Makuuchi, Juryo, Makushita, Sandanme, Jonidan, or Jonokuchi</p>
               <p><strong>players:</strong> Object with player names as keys and arrays of 3 rikishi names as values</p>
             </div>
           </div>
@@ -168,6 +169,7 @@
     <script>
       const DEFAULT_CONFIG = {
         basho: '202507',
+        division: 'Makuuchi',
         players: {
           Harold: ['Wakatakakage', 'Meisei', 'Fujinokawa'],
           Evan: ['Kotoeiho', 'Oho', 'Onokatsu'],
@@ -348,6 +350,9 @@
         if (!config.basho || typeof config.basho !== 'string') {
           throw new Error('basho must be a string (format: YYYYMM)');
         }
+        if (!config.division || typeof config.division !== 'string') {
+          throw new Error('division must be a string');
+        }
         if (!config.players || typeof config.players !== 'object') {
           throw new Error('players must be an object');
         }
@@ -414,14 +419,14 @@
       function updateTitle() {
         const dateString = `${CONFIG.basho.substring(0, 4)}-${CONFIG.basho.substring(4, 6)}-05`;
         const bashoName = new Date(dateString).toLocaleString('en-US', { month: 'long', year: 'numeric' });
-        document.getElementById('title').textContent = `Sumo Fantasy League - ${bashoName}`;
+        document.getElementById('title').textContent = `Sumo Fantasy ${CONFIG.division} League - ${bashoName}`;
         document.getElementById('resultsLink').href = `https://sumostats.com/basho/${CONFIG.basho}`;
         document.getElementById('banzukeLink').href = `https://sumostats.com/banzuke/${CONFIG.basho}`;
       }
 
       async function loadRikishiData() {
         try {
-          const response = await fetch(`https://sumo-api.com/api/basho/${CONFIG.basho}/banzuke/Makuuchi`);
+          const response = await fetch(`https://sumo-api.com/api/basho/${CONFIG.basho}/banzuke/${CONFIG.division}`);
           const data = await response.json();
           rikishiData = [...data.east, ...data.west];
         } catch (error) {
