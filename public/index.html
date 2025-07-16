@@ -60,7 +60,7 @@
     </style>
   </head>
   <body class="min-h-screen">
-    <div class="absolute top-2 right-2">
+    <div class="absolute top-4 left-6">
       <button class="btn btn-ghost btn-circle" popovertarget="theme-menu" style="anchor-name: --anchor-1">
         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
           <g fill="none">
@@ -76,7 +76,7 @@
         </svg>
       </button>
       <ul
-        class="dropdown dropdown-end menu w-52 rounded-box bg-base-100 shadow-sm max-h-42 overflow-y-auto"
+        class="dropdown menu w-52 rounded-box bg-base-100 shadow-sm max-h-42 overflow-y-auto"
         popover
         id="theme-menu"
         style="position-anchor: --anchor-1"
@@ -510,8 +510,9 @@
         container.className = 'flex flex-wrap gap-1 mt-1';
 
         const tippyInstances = rikishi.record
-          .filter(match => match.opponentShikonaEn !== '' || match.result === 'absent')
-          .map(match => {
+          .map((match, index) => {
+            if (match.opponentShikonaEn === '' && match.result !== 'absent') return null;
+
             const dot = container.appendChild(document.createElement('div'));
             dot.className = `dot status ${getColorClass('status', match.result)} cursor-pointer`;
             dot.setAttribute('tabindex', '0');
@@ -519,13 +520,17 @@
             const dotTemplate = document.createElement('div');
 
             if (match.result === 'absent' || !['win', 'loss', ''].includes(match.result)) {
-              dotTemplate.innerHTML = `<div class="capitalize">${match.result}</div>`;
+              dotTemplate.innerHTML = `
+                <div class="capitalize">${match.result}</div>
+                <div class="text-xs text-neutral-content/70">Day <span class="font-bold">${index + 1}</span></div>
+              `;
             } else {
-              dotTemplate.appendChild(createMatchOverview(match));
+              dotTemplate.appendChild(createMatchOverview(match, index + 1));
             }
 
             return tippy(dot, { content: dotTemplate, theme: 'custom' });
-          });
+          })
+          .filter(Boolean);
 
         tippy.createSingleton(tippyInstances, {
           delay: [100, 250],
@@ -540,10 +545,10 @@
         return container;
       }
 
-      function createMatchOverview(match) {
+      function createMatchOverview(match, day) {
         const overview = document.createElement('div');
         const textOverview = overview.appendChild(document.createElement('div'));
-        textOverview.className = `text-sm ${getColorClass('text', match.result)}`;
+        textOverview.className = `text-sm ${getColorClass('text', match.result)} text-nowrap text-center`;
         textOverview.innerHTML = `
           ${match.result === 'win' ? 'Beat' : match.result === 'loss' ? 'Lost to' : 'Upcoming vs'}
           <span class="rikishi" data-id="${match.opponentID}">${match.opponentShikonaEn}</span>
@@ -581,16 +586,29 @@
         }
 
         const statsOverview = overview.appendChild(document.createElement('div'));
-        statsOverview.className = 'text-xs text-neutral-content/70';
+        statsOverview.className = 'text-xs text-neutral-content/70 flex w-full items-center gap-2';
+        statsOverview.innerHTML = `
+          <div class="flex flex-col shrink items-start">
+            <span class="text-nowrap">Day</span>
+            <span class="font-bold">${day}</span>
+          </div>
+        `;
 
         const opponent = rikishiData.find(r => r.rikishiID === match.opponentID);
         if (opponent) {
-          statsOverview.innerHTML = `
-            <div class="text-nowrap">${opponent.rank}</div>
-            <div class="font-bold">${opponent.wins}-${opponent.losses}-${opponent.absences}</div>
-          `;
+          statsOverview.innerHTML += `
+            <div class=" flex flex-col grow items-end">
+              <span class="text-nowrap">${opponent.rank}</span>
+              <span class="font-bold">${opponent.wins}-${opponent.losses}-${opponent.absences}</span>
+            </div>
+            `;
         } else {
-          statsOverview.innerHTML = `<div class="text-nowrap">No Stats (not in this division)</div>`;
+          statsOverview.innerHTML += `
+            <div class="flex flex-col grow items-end">
+              <span class="text-nowrap">Rank N/A (different division)</span>
+              <span class="font-bold">N/A</span>
+            </div>
+          `;
         }
 
         return overview;
