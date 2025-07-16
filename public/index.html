@@ -498,33 +498,30 @@
         }
       }
 
+      function getColorClass(prefix, result) {
+        if (result === 'win') return prefix + '-success';
+        if (result === 'absent') return prefix + '-warning';
+        if (result === 'loss') return prefix + '-error';
+        return '';
+      }
+
       function createMatchDots(rikishi) {
         const container = document.createElement('div');
         container.className = 'flex flex-wrap gap-1 mt-1';
 
         const tippyInstances = rikishi.record
-          .filter(match => match.result !== '')
+          .filter(match => match.opponentShikonaEn !== '' || match.result === 'absent')
           .map(match => {
             const dot = container.appendChild(document.createElement('div'));
-
-            const colorClass =
-              match.result === 'win'
-                ? 'success'
-                : match.result === 'loss'
-                ? 'error'
-                : match.result === 'absent'
-                ? 'base/70'
-                : 'warning';
-
-            dot.className = `dot w-2 h-2 rounded-full bg-${colorClass} cursor-pointer`;
+            dot.className = `dot status ${getColorClass('status', match.result)} cursor-pointer`;
             dot.setAttribute('tabindex', '0');
 
             const dotTemplate = document.createElement('div');
 
-            if (match.result !== 'win' && match.result !== 'loss') {
+            if (match.result === 'absent' || !['win', 'loss', ''].includes(match.result)) {
               dotTemplate.innerHTML = `<div class="capitalize">${match.result}</div>`;
             } else {
-              dotTemplate.appendChild(createMatchOverview(match, colorClass));
+              dotTemplate.appendChild(createMatchOverview(match));
             }
 
             return tippy(dot, { content: dotTemplate, theme: 'custom' });
@@ -543,12 +540,12 @@
         return container;
       }
 
-      function createMatchOverview(match, colorClass) {
+      function createMatchOverview(match) {
         const overview = document.createElement('div');
         const textOverview = overview.appendChild(document.createElement('div'));
-        textOverview.className = `text-sm text-${colorClass}`;
+        textOverview.className = `text-sm ${getColorClass('text', match.result)}`;
         textOverview.innerHTML = `
-          ${match.result === 'win' ? 'Beat' : 'Lost to'}
+          ${match.result === 'win' ? 'Beat' : match.result === 'loss' ? 'Lost to' : 'Upcoming vs'}
           <span class="rikishi" data-id="${match.opponentID}">${match.opponentShikonaEn}</span>
         `;
 
