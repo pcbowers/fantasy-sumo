@@ -550,7 +550,7 @@
         const textOverview = overview.appendChild(document.createElement('div'));
         textOverview.className = `text-sm ${getColorClass('text', match.result)} text-nowrap text-center`;
         textOverview.innerHTML = `
-          ${match.result === 'win' ? 'Beat' : match.result === 'loss' ? 'Lost to' : 'Upcoming vs'}
+          ${match.result === 'win' ? 'Beat' : match.result === 'loss' ? 'Lost to' : 'Upcoming Match vs'}
           <span class="rikishi" data-id="${match.opponentID}">${match.opponentShikonaEn}</span>
         `;
 
