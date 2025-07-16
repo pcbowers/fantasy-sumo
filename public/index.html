@@ -439,8 +439,7 @@
         tbody.innerHTML = '';
 
         for (const [playerName, picks] of Object.entries(CONFIG.players)) {
-          const row = createPlayerRow(playerName, picks);
-          tbody.appendChild(row);
+          const row = tbody.appendChild(createPlayerRow(playerName, picks));
         }
       }
 
@@ -451,8 +450,7 @@
         const tippyInstances = rikishi.record
           .filter(match => match.result !== '')
           .map(match => {
-            const opponentName = match.opponentShikonaEn;
-            const dot = document.createElement('div');
+            const dot = container.appendChild(document.createElement('div'));
 
             const colorClass =
               match.result === 'win'
@@ -465,22 +463,14 @@
 
             dot.className = `dot w-2 h-2 rounded-full bg-${colorClass} cursor-pointer`;
             dot.setAttribute('tabindex', '0');
-            container.appendChild(dot);
 
             const dotTemplate = document.createElement('div');
-            dotTemplate.innerHTML = `<div class="rikishi-name text-sm" data-name="${opponentName}">${opponentName}</div>`;
 
-            const opponent = rikishiData.find(r => r.shikonaEn === opponentName);
-            if (opponent) {
-              dotTemplate.innerHTML += `
-                <div class="text-xs text-gray-400 text-nowrap">${opponent.rank}</div>
-                <div class="text-xs text-gray-400 font-bold">${opponent.wins}-${opponent.losses}-${opponent.absences}</div>
-              `;
+            if (match.result !== 'win' && match.result !== 'loss') {
+              dotTemplate.innerHTML = `<div class="capitalize">${match.result}</div>`;
+            } else {
+              dotTemplate.appendChild(createMatchOverview(match, colorClass));
             }
-
-            const kimarite = createKimarite(match.result, match.kimarite);
-            kimarite.classList.add(`text-${colorClass}`);
-            dotTemplate.appendChild(kimarite);
 
             return tippy(dot, { content: dotTemplate });
           });
@@ -498,64 +488,81 @@
         return container;
       }
 
-      function createKimarite(result, kimarite) {
-        const container = document.createElement('div');
-        container.className = 'text-xs';
-        container.innerHTML =
-          result === 'win'
-            ? `Won with <span class="font-semibold">${kimarite}</span>`
-            : result === 'loss'
-            ? `Lost to <span class="font-semibold">${kimarite}</span>`
-            : '';
-
-        if (!kimarite) return container;
-
-        const kimariteDetails = `
-          <div class="card card-md image-full w-60 bg-base-100">
-            <figure>
-              <img src="/kimarite/${kimariteData.find(k => k.name === kimarite).name}.png" alt="${kimarite}" />
-            </figure>
-            <div class="card-body">
-              <h2 class="text-white card-title capitalize">${kimarite}</h2>
-              <p class="text-white">${kimariteData.find(k => k.name === kimarite).description}</p>
-            </div>
-          </div>
+      function createMatchOverview(match, colorClass) {
+        const overview = document.createElement('div');
+        const textOverview = overview.appendChild(document.createElement('div'));
+        textOverview.className = `text-sm text-${colorClass}`;
+        textOverview.innerHTML = `
+          ${match.result === 'win' ? 'Beat' : 'Lost to'}
+          <span class="rikishi" data-id="${match.opponentID}">${match.opponentShikonaEn}</span>
         `;
 
-        tippy(container, {
-          content: kimariteDetails,
-          allowHTML: true,
-          delay: [100, 250],
-          theme: 'ghost',
-          arrow: false,
-          interactive: true
-        });
+        if (match.kimarite) {
+          textOverview.appendChild(document.createTextNode(match.result === 'win' ? 'with ' : 'by '));
 
-        return container;
+          const kimariteOverview = textOverview.appendChild(document.createElement('span'));
+          kimariteOverview.className = 'font-semibold';
+          kimariteOverview.textContent = match.kimarite;
+
+          const kimariteItem = kimariteData.find(k => k.name === match.kimarite);
+          const kimariteDetails = `
+            <div class="card card-md image-full w-60 bg-base-100">
+              <figure>
+                <img src="/kimarite/${kimariteItem.name}.png" alt="${kimariteItem.name}" />
+              </figure>
+              <div class="card-body">
+                <h2 class="text-white card-title capitalize">${kimariteItem.name}</h2>
+                <p class="text-white">${kimariteItem.description}</p>
+              </div>
+            </div>
+          `;
+
+          tippy(kimariteOverview, {
+            inlinePositioning: true,
+            content: kimariteDetails,
+            allowHTML: true,
+            delay: [100, 250],
+            theme: 'ghost',
+            arrow: false,
+            interactive: true
+          });
+        }
+
+        const statsOverview = overview.appendChild(document.createElement('div'));
+        statsOverview.className = 'text-xs text-gray-400';
+
+        const opponent = rikishiData.find(r => r.rikishiID === match.opponentID);
+        if (opponent) {
+          statsOverview.innerHTML = `
+            <div class="text-nowrap">${opponent.rank}</div>
+            <div class="font-bold">${opponent.wins}-${opponent.losses}-${opponent.absences}</div>
+          `;
+        } else {
+          statsOverview.innerHTML = `<div class="text-nowrap">No Stats (not in this division)</div>`;
+        }
+
+        return overview;
       }
 
       function createPlayerRow(playerName, picks) {
         const row = document.createElement('tr');
 
-        const nameCell = document.createElement('td');
+        const nameCell = row.appendChild(document.createElement('td'));
         nameCell.textContent = playerName;
         nameCell.className = 'font-semibold';
-        row.appendChild(nameCell);
 
         let totalWins = 0;
         picks.forEach(pickName => {
-          const cell = createPickCell(pickName);
+          const cell = row.appendChild(createPickCell(pickName));
           const rikishi = findRikishi(pickName);
           if (rikishi) {
             totalWins += rikishi.wins;
           }
-          row.appendChild(cell);
         });
 
-        const winsCell = document.createElement('td');
+        const winsCell = row.appendChild(document.createElement('td'));
         winsCell.textContent = totalWins;
         winsCell.className = 'font-bold text-center';
-        row.appendChild(winsCell);
 
         return row;
       }
@@ -571,7 +578,7 @@
         }
 
         cell.innerHTML = `
-          <div class="rikishi-name" data-name="${pickName}">${pickName}</div>
+          <div class="rikishi" data-id="${rikishi.rikishiID}">${pickName}</div>
           <div class="text-xs text-gray-400 text-nowrap">${rikishi.rank}</div>
           <div class="text-xs text-gray-400 font-bold">${rikishi.wins}-${rikishi.losses}-${rikishi.absences}</div>
         `;
@@ -587,28 +594,27 @@
         const dotNames = Array.from(document.querySelectorAll('.dot'))
           .map(dot => dot._tippy?.props?.content)
           .filter(content => content instanceof HTMLDivElement)
-          .map(content => content.querySelector('.rikishi-name'))
+          .map(content => content.querySelector('.rikishi'))
           .filter(Boolean);
-        const pickNames = Array.from(document.querySelectorAll('.rikishi-name'));
+        const pickNames = Array.from(document.querySelectorAll('.rikishi'));
         const elements = [...dotNames, ...pickNames];
 
         const cache = JSON.parse(localStorage.getItem('rikishiProfiles') || '{}');
 
-        const rikishiItems = elements
-          .map(element => {
-            const rikishi = findRikishi(element.dataset.name);
-            return rikishi ? { element, rikishi, profile: cache[rikishi.rikishiID] || null } : null;
-          })
-          .filter(Boolean);
+        const rikishiItems = elements.map(element => ({
+          element,
+          rikishiID: element.dataset.id,
+          profile: cache[element.dataset.id] || null
+        }));
 
-        const toFetch = rikishiItems.filter(({ profile }) => !profile);
-        const fetched = await fetchUncachedProfiles(toFetch);
+        const idsToFetch = new Set(rikishiItems.filter(({ profile }) => !profile).map(({ rikishiID }) => rikishiID));
+        const fetched = await fetchUncachedProfiles(idsToFetch);
 
         fetched.forEach(({ rikishiID, profile }) => (cache[rikishiID] = profile));
         localStorage.setItem('rikishiProfiles', JSON.stringify(cache));
 
-        rikishiItems.forEach(({ element, rikishi, profile }) => {
-          const resolvedProfile = profile || fetched.find(f => f.rikishiID === rikishi.rikishiID)?.profile;
+        rikishiItems.forEach(({ element, rikishiID, profile }) => {
+          const resolvedProfile = profile || fetched.find(f => f.rikishiID === rikishiID)?.profile;
           if (!resolvedProfile) return;
           const link = Object.assign(document.createElement('a'), {
             href: `https://www.sumo.or.jp/EnSumoDataRikishi/profile/${resolvedProfile.nskId}`,
@@ -621,13 +627,13 @@
         });
       }
 
-      async function fetchUncachedProfiles(rikishiList) {
+      async function fetchUncachedProfiles(idsToFetch) {
         try {
           return await Promise.all(
-            rikishiList.map(({ rikishi }) =>
-              fetch(`https://sumo-api.com/api/rikishi/${rikishi.rikishiID}`)
+            [...idsToFetch].map(rikishiID =>
+              fetch(`https://sumo-api.com/api/rikishi/${rikishiID}`)
                 .then(res => res.json())
-                .then(profile => ({ rikishiID: rikishi.rikishiID, profile }))
+                .then(profile => ({ rikishiID, profile }))
             )
           );
         } catch (error) {
