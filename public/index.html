@@ -512,9 +512,11 @@
         const tippyInstances = rikishi.record
           .map((match, index) => {
             if (match.opponentShikonaEn === '' && match.result !== 'absent') return null;
+            if (match.result.startsWith('fusen ')) match.result = match.result.replace('fusen ', '');
 
             const dot = container.appendChild(document.createElement('div'));
             dot.className = `dot status ${getColorClass('status', match.result)} cursor-pointer`;
+            dot.style.borderRadius = match.kimarite === 'fusen' ? '0' : '1rem';
             dot.setAttribute('tabindex', '0');
 
             const dotTemplate = document.createElement('div');

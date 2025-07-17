@@ -342,5 +342,9 @@ window.kimariteData = [
   {
     name: 'yorikiri',
     description: `Pushing the opponent forward or laterally to force him out of the ring with grabbing the mawashi (belt). One of the most popular techniques.`
+  },
+  {
+    name: 'fusen',
+    description: `Winning by default due to the opponent's absence from the match.`
   }
 ];
